@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video to png converter</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        #videoContainer { margin-top: 20px; }
+        canvas { display: none; }
+        #downloadLink { margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <h1>Video to png converter</h1>
+
+    <input type="file" id="videoInput" accept="video/*">
+    <button id="convertButton" style="display:none;">動画をフレームごとに変換してZIPにまとめる</button>
+
+    <div id="videoContainer">
+        <video id="video" width="640" controls style="display:none;"></video>
+        <canvas id="canvas" width="640"></canvas>
+    </div>
+
+    <div id="downloadLink"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <script>
+        const videoInput = document.getElementById('videoInput');
+        const videoElement = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const convertButton = document.getElementById('convertButton');
+        const downloadLinkContainer = document.getElementById('downloadLink');
+
+        videoInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file && file.type.startsWith('video/')) {
+                const url = URL.createObjectURL(file);
+                videoElement.src = url;
+                videoElement.style.display = 'block';
+                convertButton.style.display = 'inline-block';
+                downloadLinkContainer.innerHTML = ''; // 前のダウンロードリンクを消去
+            }
+        });
+
+        convertButton.addEventListener('click', function() {
+            const videoDuration = videoElement.duration;
+            let currentTime = 0;
+            let frameCount = 0;
+            const zip = new JSZip(); // ZIPファイルを作成
+
+            // 動画のフレームをキャプチャして保存する
+            const captureFrame = () => {
+                if (currentTime < videoDuration) {
+                    videoElement.currentTime = currentTime;
+                } else {
+                    console.log(`フレーム保存完了: ${frameCount} 枚`);
+
+                    // ZIPファイルを作成してダウンロード
+                    zip.generateAsync({ type: "blob" }).then(function(content) {
+                        saveAs(content, "frames.zip");
+                    });
+                }
+            };
+
+            // フレームごとの処理
+            videoElement.addEventListener('seeked', function() {
+                // 動画の現在のフレームをキャンバスに描画
+                ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                const imageData = canvas.toDataURL('image/png');
+                const blob = dataURLtoBlob(imageData);
+
+                // ZIPに画像を追加
+                zip.file(`frame_${frameCount}.png`, blob);
+
+                frameCount++;
+
+                currentTime += 0.1; // 0.1秒ごとに次のフレームへ
+                captureFrame();
+            });
+
+            // 最初のフレームをキャプチャ
+            captureFrame();
+        });
+
+        // Data URLをBlobに変換
+        function dataURLtoBlob(dataURL) {
+            const byteString = atob(dataURL.split(',')[1]);
+            const arrayBuffer = new ArrayBuffer(byteString.length);
+            const uintArray = new Uint8Array(arrayBuffer);
+
+            for (let i = 0; i < byteString.length; i++) {
+                uintArray[i] = byteString.charCodeAt(i);
+            }
+
+            return new Blob([uintArray], { type: 'image/png' });
+        }
+    </script>
+</body>
+</html>
+
