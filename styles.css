@@ -1,0 +1,13 @@
+body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+}
+#videoContainer {
+    margin-top: 20px;
+}
+canvas {
+    display: none;
+}
+#downloadLink {
+    margin-top: 20px;
+}
